@@ -29,70 +29,24 @@
                   fill=""
                 />
               </svg>
-              <span></span>
+              <span style="display: none"></span>
             </button>
             <ul
               class="dropdown-menu dropdown-menu-end notification-dropdown"
               aria-labelledby="notification"
             >
-              <li class="notification-footer">
-                <div
-                  class="d-flex justify-content-between w-100 align-items-center"
-                >
-                  <button
-                    id="markAllRead"
-                    class="btn btn-link text-decoration-none"
-                  >
-                    Read all
-                  </button>
-                  <button
-                    id="deleteAll"
-                    class="btn btn-link text-decoration-none"
-                  >
-                    Delete all
-                  </button>
-                </div>
-              </li>
-              <li>
+              <!-- <li>
                 <div class="notification-item unread">
                   <div
                     class="d-flex justify-content-between align-items-center"
                   >
                     <div class="d-flex">
-                      <div class="image">
-                        <img
-                          src="assets/images/products/product-mini-2.jpg"
-                          alt=""
-                        />
-                      </div>
                       <div class="content">
                         <h6>Trần Thanh Trúc</h6>
                         <p>Driver drowsiness detected.</p>
                         <span>12 hour ago</span>
                       </div>
                     </div>
-                    <div class="action-dropdown">
-                      <button
-                        class="btn btn-link dropdown-toggle"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                      >
-                        <i class="lni lni-more-alt"></i>
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li>
-                          <a class="dropdown-item mark-read" href="#">
-                            <i class="lni lni-checkmark"></i> Mark as read
-                          </a>
-                        </li>
-                        <li>
-                          <a class="dropdown-item delete-notification" href="#">
-                            <i class="lni lni-trash"></i> Delete
-                          </a>
-                        </li>
-                      </ul>
-                    </div>
                   </div>
                 </div>
               </li>
@@ -102,42 +56,16 @@
                     class="d-flex justify-content-between align-items-center"
                   >
                     <div class="d-flex">
-                      <div class="image">
-                        <img
-                          src="assets/images/products/product-mini-5.jpg"
-                          alt=""
-                        />
-                      </div>
+                      
                       <div class="content">
                         <h6>Vũ Gia Hưng</h6>
                         <p>Driver drowsiness detected.</p>
                         <span>13 hour ago</span>
                       </div>
                     </div>
-                    <div class="action-dropdown">
-                      <button
-                        class="btn btn-link dropdown-toggle"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                      >
-                        <i class="lni lni-more-alt"></i>
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li>
-                          <a class="dropdown-item mark-read" href="#">
-                            <i class="lni lni-checkmark"></i> Mark as read
-                          </a>
-                        </li>
-                        <li>
-                          <a class="dropdown-item delete-notification" href="#">
-                            <i class="lni lni-trash"></i> Delete
-                          </a>
-                        </li>
-                      </ul>
-                    </div>
                   </div>
                 </div>
-              </li>
+              </li> -->
             </ul>
           </div>
           <!-- notification end -->
@@ -295,6 +223,16 @@
     border: none;
     text-decoration: none !important;
   }
+  /* Đặt chiều cao cố định cho danh sách thông báo */
+  .notification-dropdown {
+    max-height: 300px; /* Điều chỉnh chiều cao theo nhu cầu */
+    overflow-y: auto; /* Cho phép cuộn theo chiều dọc */
+  }
+
+  /* Đảm bảo mỗi mục thông báo có khoảng cách */
+  .notification-item {
+    margin-bottom: 10px;
+  }
 
   #markAllRead:hover,
   #deleteAll:hover {
@@ -306,17 +244,29 @@
     min-width: 120px;
     padding: 5px 0;
     margin: 0;
+    display: none; /* Ẩn mặc định */
+  }
+
+  .action-dropdown .dropdown-menu.show {
+    display: block; /* Hiện khi có class show */
   }
 
   .action-dropdown .dropdown-item {
     font-size: 13px;
     padding: 8px 15px;
     color: #666;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .action-dropdown .dropdown-item:hover {
     background-color: #f8f9fa;
     color: #333;
+  }
+
+  .action-dropdown .dropdown-item i {
+    font-size: 14px;
   }
 
   /* Thêm divider sau notification-footer */
@@ -425,50 +375,4 @@
   }
 </style>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    // Xử lý đánh dấu đã đọc một thông báo
-    document.querySelectorAll(".mark-read").forEach((button) => {
-      button.addEventListener("click", function (e) {
-        e.preventDefault();
-        const notificationItem = this.closest(".notification-item");
-        notificationItem.classList.remove("unread");
-      });
-    });
-
-    // Xử lý xóa một thông báo
-    document.querySelectorAll(".delete-notification").forEach((button) => {
-      button.addEventListener("click", function (e) {
-        e.preventDefault();
-        const notificationItem = this.closest("li");
-        notificationItem.remove();
-      });
-    });
-
-    // Xử lý đánh dấu tất cả đã đọc
-    document
-      .getElementById("markAllRead")
-      .addEventListener("click", function () {
-        document.querySelectorAll(".notification-item").forEach((item) => {
-          item.classList.remove("unread");
-        });
-      });
-
-    // Xử lý xóa tất cả thông báo
-    document.getElementById("deleteAll").addEventListener("click", function () {
-      document.querySelectorAll(".notification-item").forEach((item) => {
-        item.closest("li").remove();
-      });
-    });
-
-    // Đóng dropdown khi click vào action
-    document
-      .querySelectorAll(".action-dropdown .dropdown-item")
-      .forEach((item) => {
-        item.addEventListener("click", function (e) {
-          e.stopPropagation();
-        });
-      });
-  });
-</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

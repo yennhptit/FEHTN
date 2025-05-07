@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="assets/css/fullcalendar.css" />
     <link rel="stylesheet" href="assets/css/fullcalendar.css" />
     <link rel="stylesheet" href="assets/css/main.css" />
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   </head>
   <style>
     .main-wrapper {
@@ -897,9 +898,92 @@
         .then((response) => response.text())
         .then((data) => {
           document.getElementById("header").innerHTML = data;
+
+          // Sau khi HTML đã được gắn vào DOM, bây giờ mới tìm được
+          const notiButton = document.getElementById("notification");
+
+          if (notiButton) {
+            console.log("✅ Đã tìm thấy nút notification");
+            notiButton.addEventListener("click", () => {
+              console.log("🚀 Nút notification được bấm!");
+              const spanElement = document.querySelector("#notification span");
+              spanElement.style.display = "none";
+              console.log("🚀 spanElement:", spanElement);
+            });
+          } else {
+            console.warn("⚠️ Không tìm thấy nút notification");
+          }
         })
-        .catch((error) => console.error("Failed to load header:", error));
+        .catch((error) => console.error("❌ Failed to load header:", error));
     </script>
+    <script src="noti.js"></script>
+    <script>
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+      });
+    </script>
+    <script>
+      function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // tháng bắt đầu từ 0
+        const year = date.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+      }
+
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+
+        const notificationList = document.querySelector(
+          ".dropdown-menu.notification-dropdown"
+        );
+
+        // Clear old notifications
+        notificationList.innerHTML = "";
+
+        // Loop over notiData and generate HTML
+        window.notiData.forEach((item) => {
+          let content = "";
+
+          if (item.type === "ALCOHOL") {
+            content = `Alcohol value: ${item.value}`;
+          } else if (item.type === "DROWSINESS") {
+            content = "Driver drowsiness detected.";
+          } else {
+            content = item.type; // fallback nếu có loại khác
+          }
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+      <div class="notification-item unread">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex">
+             <div class="image">
+  <img
+    src="${getThumbnailUrl(item.driver.faceData)}"
+    alt=""
+   
+  />
+</div>
+            <div class="content">
+              <h6>${item.driver.name}</h6>
+              <p>${content}</p>
+              <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+          notificationList.appendChild(li);
+        });
+      });
+    </script>
+
     <script>
       // Fetch driver data from API
       function fetchDriverData() {
@@ -1022,6 +1106,13 @@
       // Call the fetchTopDriverViolations function when the page loads
       document.addEventListener("DOMContentLoaded", fetchTopDriverViolations);
     </script>
+    <script src="noti.js"></script>
+    <script>
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+      });
+    </script>
+
     <script>
       function fetchMonthlyData() {
         fetch(

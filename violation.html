@@ -1101,6 +1101,83 @@
         })
         .catch((error) => console.error("Failed to load header:", error));
     </script>
+    <script src="noti.js"></script>
+    <script>
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+      });
+    </script>
+    <script>
+      function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // tháng bắt đầu từ 0
+        const year = date.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+      }
+      function getThumbnailUrl(originalUrl) {
+        // Tìm ID từ đường link gốc
+        const idMatch = originalUrl.match(/id=([^&]+)/);
+        if (!idMatch) return "";
+
+        const fileId = idMatch[1];
+        // Tạo link thumbnail
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
+      }
+
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+
+        const notificationList = document.querySelector(
+          ".dropdown-menu.notification-dropdown"
+        );
+
+        // Clear old notifications
+        notificationList.innerHTML = "";
+
+        // Loop over notiData and generate HTML
+        window.notiData.forEach((item) => {
+          let content = "";
+
+          if (item.type === "ALCOHOL") {
+            content = `Alcohol value: ${item.value}`;
+          } else if (item.type === "DROWSINESS") {
+            content = "Driver drowsiness detected.";
+          } else {
+            content = item.type; // fallback nếu có loại khác
+          }
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+      <div class="notification-item unread">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex">
+             <div class="image">
+  <img
+    src="${getThumbnailUrl(item.driver.faceData)}"
+    alt=""
+   
+  />
+</div>
+            <div class="content">
+              <h6>${item.driver.name}</h6>
+              <p>${content}</p>
+              <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+          notificationList.appendChild(li);
+        });
+      });
+    </script>
+
     <script>
       // Xử lý modal thêm mới vehicle
       document.addEventListener("DOMContentLoaded", function () {
@@ -1185,6 +1262,10 @@
             console.log("Driver data:", data);
             // Replace vehicleData with the fetched data
             vehicleData = data;
+            const totalPages = Math.ceil(vehicleData.length / pageSize);
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
             // sort the data by startTime in descending order\
             vehicleData.sort((a, b) => new Date(b.time) - new Date(a.time));
             renderTable(); // Re-render the table with new data
@@ -1198,6 +1279,21 @@
 
       // Call the fetchDriverData function when the page loads
       document.addEventListener("DOMContentLoaded", fetchDriverData);
+    </script>
+    <script>
+      const rowsPerPageSelect = document.getElementById("rowsPerPage");
+
+      // Lấy giá trị hiện tại
+      const pageSize = parseInt(rowsPerPageSelect.value);
+      console.log("Rows per page:", pageSize);
+
+      // Lắng nghe sự kiện thay đổi (nếu cần)
+      rowsPerPageSelect.addEventListener("change", () => {
+        const newPageSize = parseInt(rowsPerPageSelect.value);
+        console.log("New rows per page:", newPageSize);
+        // Gọi hàm render lại bảng hoặc phân trang tại đây
+        renderTable(newPageSize);
+      });
     </script>
   </body>
 </html>

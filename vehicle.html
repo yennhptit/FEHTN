@@ -400,6 +400,94 @@
               </div>
             </div>
           </div>
+          <!-- Edit Vehicle Modal -->
+          <div
+            class="modal fade"
+            id="editVehicleModal"
+            tabindex="-1"
+            aria-hidden="true"
+          >
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Edit Vehicle</h5>
+                  <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                  ></button>
+                </div>
+                <div class="modal-body">
+                  <form id="editVehicleForm">
+                    <input type="hidden" id="editVehicleId" />
+                    <div class="mb-3">
+                      <label for="vehicleId" class="form-label">ID</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="vehicleId"
+                        readonly
+                      />
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="editLicensePlate" class="form-label"
+                        >License Plate</label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="editLicensePlate"
+                        required
+                      />
+                    </div>
+                    <div class="mb-3">
+                      <label for="editVehicleModel" class="form-label"
+                        >Model</label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="editVehicleModel"
+                        required
+                      />
+                    </div>
+                    <div class="mb-3">
+                      <label for="editVehicleStatus" class="form-label"
+                        >Status</label
+                      >
+                      <select
+                        class="form-select"
+                        id="editVehicleStatus"
+                        required
+                      >
+                        <option value="AVAILABLE">Available</option>
+                        <option value="RUNNING">Running</option>
+                        <option value="UNAVAILABLE">Unavailable</option>
+                      </select>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    id="updateVehicleBtn"
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div data-mdb-datatable-init class="datatable">
             <table id="vehicleTable">
@@ -452,6 +540,21 @@
     <script src="assets/js/world-merc.js"></script>
     <script src="assets/js/polyfill.js"></script>
     <script src="assets/js/main.js"></script>
+    <script>
+      const rowsPerPageSelect = document.getElementById("rowsPerPage");
+
+      // Lấy giá trị hiện tại
+      const pageSize = parseInt(rowsPerPageSelect.value);
+      console.log("Rows per page:", pageSize);
+
+      // Lắng nghe sự kiện thay đổi (nếu cần)
+      rowsPerPageSelect.addEventListener("change", () => {
+        const newPageSize = parseInt(rowsPerPageSelect.value);
+        console.log("New rows per page:", newPageSize);
+        // Gọi hàm render lại bảng hoặc phân trang tại đây
+        renderTable(newPageSize);
+      });
+    </script>
     <script>
       document
         .getElementById("saveVehicleBtn")
@@ -506,6 +609,7 @@
               document.getElementById("vehicleForm").reset();
               // Hiển thị thông báo thành công (nếu muốn)
               alert("Vehicle added successfully!");
+              fetchDriverData(); // Cập nhật lại bảng sau khi thêm mới
             })
             .catch((error) => {
               console.error("Error:", error);
@@ -581,7 +685,7 @@
           const rowNumber = startIndex + index + 1;
 
           tr.innerHTML = `
-      <td>${rowNumber}</td>
+      <td>${vehicle.id}</td>
       <td>${vehicle.licensePlate}</td>
       <td>${vehicle.model}</td>
       <td><span class="badge ${statusClass}">${vehicle.status.replace(
@@ -610,8 +714,8 @@
             <li class="dropdown-item">
               <button class="text-gray remove-btn no-radius w-100"
         style="border: none; background: none; box-shadow: none; text-align: left;"
-        data-id="${vehicle.licensePlate}"
-        onclick="removeVehicle(event, '${vehicle.licensePlate}')">
+        data-id="${vehicle.id}"
+        onclick="removeVehicle(event, '${vehicle.id}')">
   Remove
 </button>
 
@@ -620,8 +724,8 @@
             <li class="dropdown-item">
               <button class="text-gray edit-btn no-radius w-100"
         style="border: none; background: none; box-shadow: none; text-align: left;"
-        data-id="${vehicle.licensePlate}"
-        onclick="editVehicle(event, '${vehicle.licensePlate}')">
+        data-id="${vehicle.id}"
+        onclick="editVehicle(event, '${vehicle.id}')">
   Edit
 </button>
 
@@ -639,13 +743,12 @@
 
       function addActionEventListeners() {
         // Edit button click
-        document.querySelectorAll(".edit").forEach((button) => {
-          button.addEventListener("click", (e) => {
-            const licensePlate = e.currentTarget.getAttribute("data-id");
-            editVehicle(licensePlate);
-          });
-        });
-
+        // document.querySelectorAll(".edit").forEach((button) => {
+        //   button.addEventListener("click", (e) => {
+        //     const vehicleid = e.currentTarget.getAttribute("data-id");
+        //     editVehicle(vehicleid);
+        //   });
+        // });
         // Remove button click
         // document.querySelectorAll(".remove-btn").forEach((button) => {
         //   button.addEventListener("click", (e) => {
@@ -655,7 +758,6 @@
         //     // removeVehicle(licensePlate);
         //   });
         // });
-
         // Edit from dropdown click
         // document.querySelectorAll(".edit-btn").forEach((button) => {
         //   button.addEventListener("click", (e) => {
@@ -666,82 +768,175 @@
         // });
       }
 
-      function editVehicle(e, licensePlate) {
-        e.preventDefault();
+      // function editVehicle(e, licensePlate) {
+      //   e.preventDefault();
 
-        const vehicle = vehicleData.find(
-          (v) => v.licensePlate === licensePlate
-        );
+      //   const vehicle = vehicleData.find(
+      //     (v) => v.licensePlate === licensePlate
+      //   );
 
-        if (vehicle) {
-          const addVehicleModal = new bootstrap.Modal(
-            document.getElementById("addVehicleModal")
-          );
-          const modalTitle = document.querySelector(
-            "#addVehicleModal .modal-title"
-          );
-          const saveVehicleBtn = document.getElementById("saveVehicleBtn");
-          const vehicleForm = document.getElementById("vehicleForm");
+      //   if (vehicle) {
+      //     const addVehicleModal = new bootstrap.Modal(
+      //       document.getElementById("addVehicleModal")
+      //     );
+      //     const modalTitle = document.querySelector(
+      //       "#addVehicleModal .modal-title"
+      //     );
+      //     const saveVehicleBtn = document.getElementById("saveVehicleBtn");
+      //     const vehicleForm = document.getElementById("vehicleForm");
 
-          // Đặt tiêu đề và nút
-          modalTitle.textContent = "Edit Vehicle";
-          saveVehicleBtn.textContent = "Update";
+      //     // Đặt tiêu đề và nút
+      //     modalTitle.textContent = "Edit Vehicle";
+      //     saveVehicleBtn.textContent = "Update";
 
-          // Điền dữ liệu vào form
-          document.getElementById("licensePlate").value = vehicle.licensePlate;
-          document.getElementById("vehicleModel").value = vehicle.model;
-          document.getElementById("vehicleStatus").value = vehicle.status;
+      //     // Điền dữ liệu vào form
+      //     document.getElementById("id").value = vehicle.id;
+      //     document.getElementById("licensePlate").value = vehicle.licensePlate;
+      //     document.getElementById("vehicleModel").value = vehicle.model;
+      //     document.getElementById("vehicleStatus").value = vehicle.status;
 
-          // Hiển thị modal
-          addVehicleModal.show();
+      //     // Hiển thị modal
+      //     addVehicleModal.show();
 
-          // Gắn cờ edit mode
-          isEditMode = true;
-          currentLicensePlate = vehicle.licensePlate;
+      //     // Gắn cờ edit mode
+      //     isEditMode = true;
+      //     currentLicensePlate = vehicle.licensePlate;
 
-          // Xử lý nút save/update (chỉ set lại handler một lần)
-          saveVehicleBtn.onclick = function () {
-            const newLicensePlate = document
-              .getElementById("licensePlate")
-              .value.trim();
-            const newModel = document
-              .getElementById("vehicleModel")
-              .value.trim();
-            const newStatus = document.getElementById("vehicleStatus").value;
+      //     // Xử lý nút save/update (chỉ set lại handler một lần)
+      //     saveVehicleBtn.onclick = function () {
+      //       const newLicensePlate = document
+      //         .getElementById("licensePlate")
+      //         .value.trim();
+      //       const newModel = document
+      //         .getElementById("vehicleModel")
+      //         .value.trim();
+      //       const newStatus = document.getElementById("vehicleStatus").value;
 
-            if (!newLicensePlate || !newModel) {
-              alert("Please fill all required fields!");
-              return;
+      //       if (!newLicensePlate || !newModel) {
+      //         alert("Please fill all required fields!");
+      //         return;
+      //       }
+
+      //       // Khi edit thì không check trùng
+      //       const index = vehicleData.findIndex(
+      //         (v) => v.licensePlate === currentLicensePlate
+      //       );
+      //       if (index !== -1) {
+      //         // Cập nhật thông tin của vehicle
+      //         vehicleData[index] = {
+      //           licensePlate: newLicensePlate, // Chỉ thay đổi biển số nếu có thay đổi
+      //           model: newModel,
+      //           status: newStatus,
+      //         };
+      //         alert("Vehicle updated successfully!");
+      //       }
+
+      //       // Đóng modal và reset form
+      //       addVehicleModal.hide();
+      //       vehicleForm.reset();
+      //       isEditMode = false;
+      //       currentLicensePlate = null;
+
+      //       renderTable(); // Cập nhật lại bảng sau khi thay đổi
+      //       setupPagination();
+      //       updatePageInfo();
+      //     };
+      //   } else {
+      //     alert("Vehicle not found!");
+      //   }
+      // }
+      async function editVehicle(event, vehicleId) {
+        event.preventDefault();
+
+        try {
+          // Fetch vehicle data
+          const response = await fetch(
+            `http://26.148.120.1:8080/api/vehicles/${vehicleId}`,
+            {
+              method: "GET",
+              headers: {
+                accept: "*/*",
+                Authorization:
+                  "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+              },
             }
+          );
 
-            // Khi edit thì không check trùng
-            const index = vehicleData.findIndex(
-              (v) => v.licensePlate === currentLicensePlate
-            );
-            if (index !== -1) {
-              // Cập nhật thông tin của vehicle
-              vehicleData[index] = {
-                licensePlate: newLicensePlate, // Chỉ thay đổi biển số nếu có thay đổi
-                model: newModel,
-                status: newStatus,
-              };
-              alert("Vehicle updated successfully!");
-            }
+          if (!response.ok) {
+            throw new Error("Failed to fetch vehicle data");
+          }
 
-            // Đóng modal và reset form
-            addVehicleModal.hide();
-            vehicleForm.reset();
-            isEditMode = false;
-            currentLicensePlate = null;
+          const vehicleData = await response.json();
 
-            renderTable(); // Cập nhật lại bảng sau khi thay đổi
-            setupPagination();
-            updatePageInfo();
-          };
-        } else {
-          alert("Vehicle not found!");
+          // Populate the edit form
+          document.getElementById("vehicleId").value = vehicleData.id;
+
+          document.getElementById("editVehicleId").value = vehicleData.id;
+          document.getElementById("editLicensePlate").value =
+            vehicleData.licensePlate;
+          document.getElementById("editVehicleModel").value = vehicleData.model;
+          document.getElementById("editVehicleStatus").value =
+            vehicleData.status;
+
+          // Show the modal
+          const editModal = new bootstrap.Modal(
+            document.getElementById("editVehicleModal")
+          );
+          editModal.show();
+        } catch (error) {
+          console.error("Error fetching vehicle data:", error);
+          alert("Failed to load vehicle data for editing");
         }
       }
+
+      // Handle update button click
+      document
+        .getElementById("updateVehicleBtn")
+        .addEventListener("click", async function () {
+          const vehicleId = document.getElementById("editVehicleId").value;
+
+          const updatedData = {
+            id: document.getElementById("vehicleId").value,
+            licensePlate: document.getElementById("editLicensePlate").value,
+            model: document.getElementById("editVehicleModel").value,
+            status: document.getElementById("editVehicleStatus").value,
+            isDelete: "false",
+          };
+
+          try {
+            const response = await fetch(
+              `http://26.148.120.1:8080/api/vehicles/${vehicleId}`,
+              {
+                method: "PUT", // or 'PATCH' depending on your API
+                headers: {
+                  accept: "*/*",
+                  Authorization:
+                    "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatedData),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to update vehicle");
+            }
+
+            // Close the modal and refresh the data
+            const editModal = bootstrap.Modal.getInstance(
+              document.getElementById("editVehicleModal")
+            );
+            editModal.hide();
+
+            // Refresh your vehicle list here
+            alert("Vehicle updated successfully");
+            // You might want to call a function to refresh the vehicle list
+            fetchDriverData(); // Assuming this function fetches the updated vehicle data
+          } catch (error) {
+            console.error("Error updating vehicle:", error);
+            alert("Failed to update vehicle");
+          }
+        });
 
       function removeVehicle(e, licensePlate) {
         // Confirm before removing
@@ -750,17 +945,45 @@
         if (
           confirm(`Are you sure you want to remove vehicle ${licensePlate}?`)
         ) {
-          // Find index of vehicle to remove
-          const index = vehicleData.findIndex(
-            (v) => v.licensePlate === licensePlate
-          );
-          if (index !== -1) {
-            vehicleData.splice(index, 1);
-            renderTable();
-            setupPagination();
-            updatePageInfo();
-            console.log("Vehicle removed:", licensePlate);
-          }
+          // Gọi API DELETE
+          fetch(`http://26.148.120.1:8080/api/vehicles/${licensePlate}`, {
+            method: "DELETE",
+            headers: {
+              accept: "*/*",
+              Authorization:
+                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+            },
+          })
+            .then((response) => {
+              if (response.status === 200 || response.status === 204) {
+                // Xoá khỏi mảng local nếu API xoá thành công
+                const index = vehicleData.findIndex(
+                  (v) => v.licensePlate === licensePlate
+                );
+                if (index !== -1) {
+                  vehicleData.splice(index, 1);
+                }
+                // Tính lại tổng số trang
+                const totalPages = Math.ceil(vehicleData.length / pageSize);
+
+                // Giảm currentPage nếu vượt quá tổng số trang
+                if (currentPage > totalPages) {
+                  currentPage = totalPages;
+                }
+                fetchDriverData();
+
+                // renderTable();
+                // setupPagination();
+                // updatePageInfo();
+              } else {
+                console.error("Failed to delete vehicle on server");
+                alert("Failed to delete vehicle on server");
+              }
+            })
+            .catch((error) => {
+              console.error("Error during delete request:", error);
+              alert("Error connecting to server");
+            });
         }
       }
 
@@ -958,6 +1181,83 @@
         })
         .catch((error) => console.error("Failed to load header:", error));
     </script>
+    <script src="noti.js"></script>
+    <script>
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+      });
+    </script>
+    <script>
+      function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // tháng bắt đầu từ 0
+        const year = date.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+      }
+      function getThumbnailUrl(originalUrl) {
+        // Tìm ID từ đường link gốc
+        const idMatch = originalUrl.match(/id=([^&]+)/);
+        if (!idMatch) return "";
+
+        const fileId = idMatch[1];
+        // Tạo link thumbnail
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
+      }
+
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+
+        const notificationList = document.querySelector(
+          ".dropdown-menu.notification-dropdown"
+        );
+
+        // Clear old notifications
+        notificationList.innerHTML = "";
+
+        // Loop over notiData and generate HTML
+        window.notiData.forEach((item) => {
+          let content = "";
+
+          if (item.type === "ALCOHOL") {
+            content = `Alcohol value: ${item.value}`;
+          } else if (item.type === "DROWSINESS") {
+            content = "Driver drowsiness detected.";
+          } else {
+            content = item.type; // fallback nếu có loại khác
+          }
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+      <div class="notification-item unread">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex">
+             <div class="image">
+  <img
+    src="${getThumbnailUrl(item.driver.faceData)}"
+    alt=""
+   
+  />
+</div>
+            <div class="content">
+              <h6>${item.driver.name}</h6>
+              <p>${content}</p>
+              <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+          notificationList.appendChild(li);
+        });
+      });
+    </script>
+
     <script>
       // Xử lý modal thêm mới vehicle
       document.addEventListener("DOMContentLoaded", function () {
@@ -1025,18 +1325,15 @@
     <script>
       // Fetch driver data from API
       function fetchDriverData() {
-        fetch(
-          "http://26.148.120.1:8080/api/vehicles?pageNumber=0&pageSize=1000000",
-          {
-            method: "GET",
-            mode: "cors", // Thêm mode cors
-            headers: {
-              accept: "*/*",
-              Authorization:
-                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
-            },
-          }
-        )
+        fetch("http://26.148.120.1:8080/api/vehicles", {
+          method: "GET",
+          mode: "cors", // Thêm mode cors
+          headers: {
+            accept: "*/*",
+            Authorization:
+              "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+          },
+        })
           .then((response) => {
             if (!response.ok) {
               throw new Error("Failed to fetch driver data");
@@ -1047,6 +1344,10 @@
             console.log("Driver data:", data);
             // Replace vehicleData with the fetched data
             vehicleData = data;
+            const totalPages = Math.ceil(vehicleData.length / pageSize);
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
             renderTable(); // Re-render the table with new data
             setupPagination(); // Re-setup pagination
             updatePageInfo(); // Update page info

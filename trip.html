@@ -711,7 +711,7 @@
           const rowNumber = startIndex + index + 1;
 
           tr.innerHTML = `
-      <td>${rowNumber}</td>
+      <td>${vehicle.id}</td>
       <td>${vehicle.driver.id}</td>
       <td>${vehicle.vehicle.id}</td>
       <td>${formatDate(vehicle.startTime)}</td>
@@ -746,8 +746,8 @@
             <li class="dropdown-item">
               <button class="text-gray remove-btn no-radius w-100"
         style="border: none; background: none; box-shadow: none; text-align: left;"
-        data-id="${vehicle.driverId}"
-        onclick="removeVehicle(event, '${vehicle.driverId}')">
+        data-id="${vehicle.id}"
+        onclick="removeVehicle(event, '${vehicle.id}')">
   Remove
 </button>
 
@@ -905,20 +905,46 @@
         // Confirm before removing
         console.log("Remove button clicked", licensePlate);
         e.preventDefault();
-        if (
-          confirm(`Are you sure you want to remove vehicle ${licensePlate}?`)
-        ) {
-          // Find index of vehicle to remove
-          const index = vehicleData.findIndex(
-            (v) => v.licensePlate === licensePlate
-          );
-          if (index !== -1) {
-            vehicleData.splice(index, 1);
-            renderTable();
-            setupPagination();
-            updatePageInfo();
-            console.log("Vehicle removed:", licensePlate);
-          }
+        if (confirm(`Are you sure you want to remove trip ${licensePlate}?`)) {
+          // Gọi API DELETE
+          fetch(`http://26.148.120.1:8080/api/trips/${licensePlate}`, {
+            method: "DELETE",
+            headers: {
+              accept: "*/*",
+              Authorization:
+                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+            },
+          })
+            .then((response) => {
+              if (response.status === 200 || response.status === 204) {
+                // Xoá khỏi mảng local nếu API xoá thành công
+                const index = vehicleData.findIndex(
+                  (v) => v.licensePlate === licensePlate
+                );
+                if (index !== -1) {
+                  vehicleData.splice(index, 1);
+                }
+                // Tính lại tổng số trang
+                const totalPages = Math.ceil(vehicleData.length / pageSize);
+
+                // Giảm currentPage nếu vượt quá tổng số trang
+                if (currentPage > totalPages) {
+                  currentPage = totalPages;
+                }
+                fetchDriverData();
+
+                // renderTable();
+                // setupPagination();
+                // updatePageInfo();
+              } else {
+                console.error("Failed to delete vehicle on server");
+                alert("Failed to delete vehicle on server");
+              }
+            })
+            .catch((error) => {
+              console.error("Error during delete request:", error);
+              alert("Error connecting to server");
+            });
         }
       }
 
@@ -1116,6 +1142,83 @@
         })
         .catch((error) => console.error("Failed to load header:", error));
     </script>
+    <script src="noti.js"></script>
+    <script>
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+      });
+    </script>
+    <script>
+      function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // tháng bắt đầu từ 0
+        const year = date.getFullYear();
+
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+      }
+      function getThumbnailUrl(originalUrl) {
+        // Tìm ID từ đường link gốc
+        const idMatch = originalUrl.match(/id=([^&]+)/);
+        if (!idMatch) return "";
+
+        const fileId = idMatch[1];
+        // Tạo link thumbnail
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
+      }
+
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Data loaded:", window.notiData);
+
+        const notificationList = document.querySelector(
+          ".dropdown-menu.notification-dropdown"
+        );
+
+        // Clear old notifications
+        notificationList.innerHTML = "";
+
+        // Loop over notiData and generate HTML
+        window.notiData.forEach((item) => {
+          let content = "";
+
+          if (item.type === "ALCOHOL") {
+            content = `Alcohol value: ${item.value}`;
+          } else if (item.type === "DROWSINESS") {
+            content = "Driver drowsiness detected.";
+          } else {
+            content = item.type; // fallback nếu có loại khác
+          }
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+      <div class="notification-item unread">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex">
+             <div class="image">
+  <img
+    src="${getThumbnailUrl(item.driver.faceData)}"
+    alt=""
+   
+  />
+</div>
+            <div class="content">
+              <h6>${item.driver.name}</h6>
+              <p>${content}</p>
+              <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+          notificationList.appendChild(li);
+        });
+      });
+    </script>
+
     <script>
       // Xử lý modal thêm mới vehicle
       document.addEventListener("DOMContentLoaded", function () {
@@ -1200,6 +1303,10 @@
             console.log("Driver data:", data);
             // Replace vehicleData with the fetched data
             vehicleData = data;
+            const totalPages = Math.ceil(vehicleData.length / pageSize);
+            if (currentPage > totalPages) {
+              currentPage = totalPages;
+            }
             // sort the data by startTime in descending order\
             vehicleData.sort(
               (a, b) => new Date(b.startTime) - new Date(a.startTime)
@@ -1215,6 +1322,21 @@
 
       // Call the fetchDriverData function when the page loads
       document.addEventListener("DOMContentLoaded", fetchDriverData);
+    </script>
+    <script>
+      const rowsPerPageSelect = document.getElementById("rowsPerPage");
+
+      // Lấy giá trị hiện tại
+      const pageSize = parseInt(rowsPerPageSelect.value);
+      console.log("Rows per page:", pageSize);
+
+      // Lắng nghe sự kiện thay đổi (nếu cần)
+      rowsPerPageSelect.addEventListener("change", () => {
+        const newPageSize = parseInt(rowsPerPageSelect.value);
+        console.log("New rows per page:", newPageSize);
+        // Gọi hàm render lại bảng hoặc phân trang tại đây
+        renderTable(newPageSize);
+      });
     </script>
   </body>
 </html>
