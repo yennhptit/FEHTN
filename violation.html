@@ -28,6 +28,9 @@
     <link rel="stylesheet" href="assets/css/fullcalendar.css" />
     <link rel="stylesheet" href="assets/css/fullcalendar.css" />
     <link rel="stylesheet" href="assets/css/main.css" />
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="noti.js"></script>
+    <script src="notification.js"></script>
     <style>
       /* Custom table styles */
       .datatable {
@@ -696,7 +699,7 @@
           const rowNumber = startIndex + index + 1;
 
           tr.innerHTML = `
-      <td>${rowNumber}</td>
+      <td>${vehicle.id}</td>
       <td>${vehicle.driver.id}</td>
       <td><span class="badge ${statusClass}">${vehicle.type.replace(
             "_",
@@ -731,22 +734,14 @@
             <li class="dropdown-item">
               <button class="text-gray remove-btn no-radius w-100"
         style="border: none; background: none; box-shadow: none; text-align: left;"
-        data-id="${vehicle.driverId}"
-        onclick="removeVehicle(event, '${vehicle.driverId}')">
+        data-id="${vehicle.id}"
+        onclick="removeVehicle(event, '${vehicle.id}')">
   Remove
 </button>
 
 
             </li>
-            <li class="dropdown-item">
-              <button class="text-gray edit-btn no-radius w-100"
-        style="border: none; background: none; box-shadow: none; text-align: left;"
-        data-id="${vehicle.driverId}"
-        onclick="editVehicle(event, '${vehicle.driverId}')">
-  Edit
-</button>
-
-            </li>
+            
           </ul>
         </div>
       </td>
@@ -886,24 +881,43 @@
         }
       }
 
-      function removeVehicle(e, licensePlate) {
-        // Confirm before removing
-        console.log("Remove button clicked", licensePlate);
+      function removeVehicle(e, violationId) {
         e.preventDefault();
-        if (
-          confirm(`Are you sure you want to remove vehicle ${licensePlate}?`)
-        ) {
-          // Find index of vehicle to remove
-          const index = vehicleData.findIndex(
-            (v) => v.licensePlate === licensePlate
-          );
-          if (index !== -1) {
-            vehicleData.splice(index, 1);
-            renderTable();
-            setupPagination();
-            updatePageInfo();
-            console.log("Vehicle removed:", licensePlate);
-          }
+        if (confirm(`Are you sure you want to remove this violation?`)) {
+          fetch(`http://localhost:8080/api/violations/${violationId}`, {
+            method: 'DELETE',
+            headers: {
+              'accept': '*/*',
+              'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg'
+            }
+          })
+          .then(response => {
+            console.log('Response status:', response.status);
+            if (response.status === 204 || response.status === 200) {
+              // Convert violationId to number for comparison
+              const idToRemove = parseInt(violationId);
+              console.log('Removing violation with ID:', idToRemove);
+              
+              // Remove from local data
+              vehicleData = vehicleData.filter(v => {
+                const currentId = parseInt(v.id);
+                console.log('Comparing:', currentId, idToRemove);
+                return currentId !== idToRemove;
+              });
+              
+              console.log('Updated vehicleData:', vehicleData);
+              renderTable();
+              setupPagination();
+              updatePageInfo();
+            } else {
+              console.error('Failed to delete violation. Status:', response.status);
+              alert('Failed to delete violation');
+            }
+          })
+          .catch(error => {
+            console.error('Error during delete request:', error);
+            alert('Error connecting to server');
+          });
         }
       }
 
@@ -1017,16 +1031,17 @@
 
       // Update page information text
       function updatePageInfo() {
+        const pageInfoElement = document.getElementById("pageInfo");
+        if (!pageInfoElement) {
+          console.warn("Page info element not found");
+          return;
+        }
+
         const startIndex = (currentPage - 1) * rowsPerPage + 1;
-        const endIndex = Math.min(
-          currentPage * rowsPerPage,
-          vehicleData.length
-        );
+        const endIndex = Math.min(currentPage * rowsPerPage, vehicleData.length);
         const totalItems = vehicleData.length;
 
-        document.getElementById(
-          "pageInfo"
-        ).textContent = `${startIndex}-${endIndex} of ${totalItems}`;
+        pageInfoElement.textContent = `${startIndex}-${endIndex} of ${totalItems}`;
       }
 
       // Setup column sorting
@@ -1093,13 +1108,29 @@
           console.error("Failed to load sidebar:", error);
         });
     </script>
+
     <script>
       fetch("header.html")
         .then((response) => response.text())
         .then((data) => {
           document.getElementById("header").innerHTML = data;
+
+          // Sau khi HTML đã được gắn vào DOM, bây giờ mới tìm được
+          const notiButton = document.getElementById("notification");
+
+          if (notiButton) {
+            console.log("✅ Đã tìm thấy nút notification");
+            notiButton.addEventListener("click", () => {
+              console.log("🚀 Nút notification được bấm!");
+              const spanElement = document.querySelector("#notification span");
+              spanElement.style.display = "none";
+              console.log("🚀 spanElement:", spanElement);
+            });
+          } else {
+            console.warn("⚠️ Không tìm thấy nút notification");
+          }
         })
-        .catch((error) => console.error("Failed to load header:", error));
+        .catch((error) => console.error("❌ Failed to load header:", error));
     </script>
     <script src="noti.js"></script>
     <script>
@@ -1108,147 +1139,177 @@
       });
     </script>
     <script>
-      function formatTimestamp(timestamp) {
-        const date = new Date(timestamp);
+      function getThumbnailUrl(originalUrl) {
+        if (!originalUrl) return "assets/images/client-profile.png";
+        const idMatch = originalUrl.match(/id=([^&]+)/);
+        if (!idMatch) return "assets/images/client-profile.png";
+        const fileId = idMatch[1];
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
+      }
 
+      function formatTimestamp(timestamp) {
+        if (!timestamp) return "Just now";
+        const date = new Date(timestamp);
         const hours = String(date.getHours()).padStart(2, "0");
         const minutes = String(date.getMinutes()).padStart(2, "0");
         const seconds = String(date.getSeconds()).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0"); // tháng bắt đầu từ 0
+        const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
-
         return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
       }
-      function getThumbnailUrl(originalUrl) {
-        // Tìm ID từ đường link gốc
-        const idMatch = originalUrl.match(/id=([^&]+)/);
-        if (!idMatch) return "";
 
-        const fileId = idMatch[1];
-        // Tạo link thumbnail
-        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
-      }
-
-      document.addEventListener("notiDataLoaded", function () {
-        console.log("Data loaded:", window.notiData);
-
-        const notificationList = document.querySelector(
-          ".dropdown-menu.notification-dropdown"
-        );
+      function initializeNotifications() {
+        const notificationList = document.querySelector(".dropdown-menu.notification-dropdown");
+        if (!notificationList) {
+          console.error("Notification dropdown not found");
+          return;
+        }
 
         // Clear old notifications
         notificationList.innerHTML = "";
 
+        // Check if notiData exists
+        if (!window.notiData || !Array.isArray(window.notiData)) {
+          console.error("No notification data available");
+          return;
+        }
+
         // Loop over notiData and generate HTML
         window.notiData.forEach((item) => {
-          let content = "";
+          if (!item) return;
 
+          let content = "";
           if (item.type === "ALCOHOL") {
-            content = `Alcohol value: ${item.value}`;
+            content = `Alcohol value: ${item.value || 'N/A'}`;
           } else if (item.type === "DROWSINESS") {
             content = "Driver drowsiness detected.";
           } else {
-            content = item.type; // fallback nếu có loại khác
+            content = item.type || "Unknown notification";
           }
 
           const li = document.createElement("li");
           li.innerHTML = `
-      <div class="notification-item unread">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex">
-             <div class="image">
-  <img
-    src="${getThumbnailUrl(item.driver.faceData)}"
-    alt=""
-   
-  />
-</div>
-            <div class="content">
-              <h6>${item.driver.name}</h6>
-              <p>${content}</p>
-              <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+        <div class="notification-item unread">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex">
+              <div class="image">
+                <img src="${getThumbnailUrl(item.driver?.faceData)}" alt="Driver" />
+              </div>
+              <div class="content">
+                <h6>${item.driver?.name || 'Unknown Driver'}</h6>
+                <p>${content}</p>
+                <span>${formatTimestamp(item.timestamp)}</span>
+              </div>
             </div>
+            <i class="lni lni-checkmark-circle mark-read-btn" 
+               style="cursor: pointer; color: #4A6CF7; font-size: 24px; padding: 8px; transition: all 0.3s ease;" 
+               data-id="${item.id}"></i>
           </div>
         </div>
-      </div>
-    `;
+      `;
           notificationList.appendChild(li);
-        });
-      });
-    </script>
 
-    <script>
-      // Xử lý modal thêm mới vehicle
-      document.addEventListener("DOMContentLoaded", function () {
-        const addVehicleModal = new bootstrap.Modal(
-          document.getElementById("addVehicleModal")
-        );
-
-        // Xử lý khi nhấn nút Save
-        document
-          .getElementById("saveVehicleBtn")
-          .addEventListener("click", function () {
-            const licensePlate = document.getElementById("licensePlate").value;
-            const model = document.getElementById("vehicleModel").value;
-            const status = document.getElementById("vehicleStatus").value;
-
-            if (!licensePlate || !model) {
-              alert("Please fill all required fields!");
-              return;
-            }
-
-            // Kiểm tra biển số xe đã tồn tại chưa
-            const exists = vehicleData.some(
-              (v) => v.licensePlate === licensePlate
-            );
-            if (exists) {
-              alert("Vehicle with this license plate already exists!");
-              return;
-            }
-
-            // Thêm vehicle mới vào đầu mảng
-            vehicleData.unshift({
-              licensePlate: licensePlate,
-              model: model,
-              status: status,
+          // Add click handler for the mark as read icon
+          const markReadBtn = li.querySelector('.mark-read-btn');
+          if (markReadBtn) {
+            markReadBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              const notificationId = this.getAttribute('data-id');
+              if (notificationId) {
+                markAsRead(notificationId);
+                this.style.transform = 'scale(1.2)';
+                this.style.color = '#2ecc71';
+                setTimeout(() => {
+                  this.style.transform = 'scale(1)';
+                }, 300);
+              }
             });
+          }
+        });
+      }
 
-            // Đóng modal
-            addVehicleModal.hide();
-
-            // Reset form
-            document.getElementById("vehicleForm").reset();
-
-            // Cập nhật bảng
-            currentPage = 1;
-            renderTable();
-            setupPagination();
-            updatePageInfo();
-
-            alert("Vehicle added successfully!");
-          });
-
-        // Reset form khi modal đóng
-        document
-          .getElementById("addVehicleModal")
-          .addEventListener("hidden.bs.modal", function () {
-            document.getElementById("vehicleForm").reset();
-          });
+      // Initialize notifications when data is loaded
+      document.addEventListener("notiDataLoaded", function () {
+        console.log("Notification data loaded:", window.notiData);
+        initializeNotifications();
       });
+
+      // Also initialize when DOM is loaded
+      document.addEventListener("DOMContentLoaded", function() {
+        if (window.notiData) {
+          initializeNotifications();
+        }
+      });
+
+      // Function to mark all notifications as read
+      function markAllAsRead() {
+        fetch('http://localhost:8080/api/notifications/read-all', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg'
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Remove unread class from all notifications
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+              item.classList.remove('unread');
+            });
+            // Disable the mark all as read button
+            const markAllReadBtn = document.querySelector('.mark-all-read-btn');
+            if (markAllReadBtn) {
+              markAllReadBtn.disabled = true;
+              markAllReadBtn.classList.add('disabled');
+            }
+          }
+        })
+        .catch(error => console.error('Error marking all notifications as read:', error));
+      }
+
+      // Function to mark a single notification as read
+      function markAsRead(notificationId) {
+        fetch(`http://localhost:8080/api/violations/${notificationId}/mark-as-read`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg'
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Find the notification item
+            const notificationItem = document.querySelector(`.mark-read-btn[data-id="${notificationId}"]`)?.closest('.notification-item');
+            if (notificationItem) {
+              // Add fade-out animation
+              notificationItem.style.transition = 'all 0.5s ease';
+              notificationItem.style.opacity = '0';
+              notificationItem.style.transform = 'translateX(100%)';
+              
+              // Remove the element after animation completes
+              setTimeout(() => {
+                notificationItem.parentElement.remove();
+              }, 500);
+            }
+          } else {
+            console.error('Failed to mark violation as read');
+          }
+        })
+        .catch(error => console.error('Error marking violation as read:', error));
+      }
     </script>
+    
     <script>
       // Fetch driver data from API
       function fetchDriverData() {
         fetch(
-          "http://26.148.120.1:8080/api/violations?pageNumber=0&pageSize=1000000",
+          "http://localhost:8080/api/violations?pageNumber=0&pageSize=1000000",
           {
             method: "GET",
             mode: "cors", // Thêm mode cors
             headers: {
               accept: "*/*",
               Authorization:
-                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
             },
           }
         )

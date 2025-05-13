@@ -54,13 +54,13 @@ client.on("message", (topic, message) => {
 let previousNotiCount = 0;
 
 function fetchNotiData() {
-  fetch("http://26.148.120.1:8080/api/violations", {
+  fetch("http://localhost:8080/api/violations/unread", {
     method: "GET",
     mode: "cors",
     headers: {
       accept: "*/*",
       Authorization:
-        "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+        "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
     },
   })
     .then((response) => {
@@ -78,13 +78,13 @@ function fetchNotiData() {
       );
 
       // Lấy 5 mục đầu
-      const top5Data = sortedData.slice(0, 5);
+      // const top5Data = sortedData.slice(0, 5);
 
       // Lưu vào window
-      window.notiData = top5Data;
+      window.notiData = sortedData;
       document.dispatchEvent(new CustomEvent("notiDataLoaded"));
 
-      const currentNotiCount = top5Data.length;
+      const currentNotiCount = sortedData.length;
       const spanElement = document.querySelector("#notification span");
       const modalElement = document.querySelector(
         ".dropdown-menu.notification-dropdown"

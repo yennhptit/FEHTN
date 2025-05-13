@@ -376,3 +376,107 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="noti.js"></script>
+<script src="notification.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Initialize Bootstrap dropdown
+    const dropdownElementList = document.querySelectorAll('.dropdown-toggle');
+    if (dropdownElementList.length > 0) {
+      const dropdownList = [...dropdownElementList].map(dropdownToggleEl => {
+        return new bootstrap.Dropdown(dropdownToggleEl);
+      });
+    }
+
+    // Initialize notifications
+    if (typeof initializeNotifications === 'function') {
+      initializeNotifications();
+    }
+
+    // Add click handler for notification button
+    const notiButton = document.getElementById("notification");
+    if (notiButton) {
+      notiButton.addEventListener("click", () => {
+        const spanElement = document.querySelector("#notification span");
+        if (spanElement) {
+          spanElement.style.display = "none";
+        }
+      });
+    }
+
+    // Add click handler for profile button
+    const profileButton = document.getElementById("profile");
+    if (profileButton) {
+      profileButton.addEventListener("click", () => {
+        // Add any profile button click handling here
+      });
+    }
+
+    // Add click handler for sign out
+    const signOutLink = document.querySelector('a[href="#0"]');
+    if (signOutLink) {
+      signOutLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.location.href = "index.html";
+      });
+    }
+  });
+
+  // Add notification formatting functions
+  function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+  }
+
+  function getThumbnailUrl(originalUrl) {
+    const idMatch = originalUrl.match(/id=([^&]+)/);
+    if (!idMatch) return "";
+    const fileId = idMatch[1];
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w50`;
+  }
+
+  // Add notification data loaded handler
+  document.addEventListener("notiDataLoaded", function () {
+    console.log("Data loaded:", window.notiData);
+    const notificationList = document.querySelector(".dropdown-menu.notification-dropdown");
+    if (notificationList) {
+      notificationList.innerHTML = "";
+      window.notiData.forEach((item) => {
+        let content = "";
+        if (item.type === "ALCOHOL") {
+          content = `Alcohol value: ${item.value}`;
+        } else if (item.type === "DROWSINESS") {
+          content = "Driver drowsiness detected.";
+        } else {
+          content = item.type;
+        }
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="notification-item unread">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex">
+                <div class="image">
+                  <img src="${getThumbnailUrl(item.driver.faceData)}" alt="" />
+                </div>
+                <div class="content">
+                  <h6>${item.driver.name}</h6>
+                  <p>${content}</p>
+                  <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        notificationList.appendChild(li);
+      });
+    }
+  });
+</script>

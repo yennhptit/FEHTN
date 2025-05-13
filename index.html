@@ -703,13 +703,13 @@
         try {
           // Lấy dữ liệu Drowsy Violations
           const drowsyResponse = await fetch(
-            "http://26.148.120.1:8080/api/stats/drowsiness/daily",
+            "http://localhost:8080/api/stats/drowsiness/daily",
             {
               method: "GET",
               headers: {
                 accept: "*/*",
                 Authorization:
-                  "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                  "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
               },
             }
           );
@@ -717,13 +717,13 @@
 
           // Lấy dữ liệu Alcohol Violations
           const alcoholResponse = await fetch(
-            "http://26.148.120.1:8080/api/stats/alcohol/daily",
+            "http://localhost:8080/api/stats/alcohol/daily",
             {
               method: "GET",
               headers: {
                 accept: "*/*",
                 Authorization:
-                  "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                  "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
               },
             }
           );
@@ -893,6 +893,7 @@
           console.error("Failed to load sidebar:", error);
         });
     </script>
+    
     <script>
       fetch("header.html")
         .then((response) => response.text())
@@ -976,26 +977,101 @@
               <span>${formatTimestamp(item.timestamp) || "Just now"}</span>
             </div>
           </div>
+          <i class="lni lni-checkmark-circle mark-read-btn" style="cursor: pointer; color: #4A6CF7; font-size: 24px; padding: 8px; transition: all 0.3s ease;" data-id="${item.id}"></i>
         </div>
       </div>
     `;
           notificationList.appendChild(li);
+
+          // Add click handler for the mark as read icon
+          const markReadBtn = li.querySelector('.mark-read-btn');
+          markReadBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling
+            const notificationId = this.getAttribute('data-id');
+             markAsRead(notificationId);
+            // Add click animation
+            this.style.transform = 'scale(1.2)';
+            this.style.color = '#2ecc71'; // Change to green color
+            
+            // Reset animation after 300ms
+            setTimeout(() => {
+              this.style.transform = 'scale(1)';
+            }, 300);
+            
+           
+          });
         });
       });
+    </script>
+
+    <script>
+      // Function to mark all notifications as read
+      function markAllAsRead() {
+        fetch('http://localhost:8080/api/notifications/read-all', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg'
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Remove unread class from all notifications
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+              item.classList.remove('unread');
+            });
+            // Disable the mark all as read button
+            const markAllReadBtn = document.querySelector('.mark-all-read-btn');
+            markAllReadBtn.disabled = true;
+            markAllReadBtn.classList.add('disabled');
+          }
+        })
+        .catch(error => console.error('Error marking all notifications as read:', error));
+      }
+    </script>
+
+    <script>
+      // Update the markAsRead function to handle icon styling
+      function markAsRead(notificationId) {
+        fetch(`http://localhost:8080/api/violations/${notificationId}/mark-as-read`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg'
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Find the notification item
+            const notificationItem = document.querySelector(`.mark-read-btn[data-id="${notificationId}"]`).closest('.notification-item');
+            
+            // Add fade-out animation
+            notificationItem.style.transition = 'all 0.5s ease';
+            notificationItem.style.opacity = '0';
+            notificationItem.style.transform = 'translateX(100%)';
+            
+            // Remove the element after animation completes
+            setTimeout(() => {
+              notificationItem.parentElement.remove();
+            }, 500);
+          } else {
+            console.error('Failed to mark violation as read');
+          }
+        })
+        .catch(error => console.error('Error marking violation as read:', error));
+      }
     </script>
 
     <script>
       // Fetch driver data from API
       function fetchDriverData() {
         fetch(
-          "http://26.148.120.1:8080/api/violations?pageNumber=0&pageSize=1000000",
+          "http://localhost:8080/api/violations?pageNumber=0&pageSize=1000000",
           {
             method: "GET",
             mode: "cors", // Thêm mode cors
             headers: {
               accept: "*/*",
               Authorization:
-                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
             },
           }
         )
@@ -1026,13 +1102,13 @@
     <script>
       // Fetch top driver violations data from API
       function fetchTopDriverViolations() {
-        fetch("http://26.148.120.1:8080/api/stats/top-drivers/violations", {
+        fetch("http://localhost:8080/api/stats/top-drivers/violations", {
           method: "GET",
           mode: "cors",
           headers: {
             accept: "*/*",
             Authorization:
-              "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+              "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
           },
         })
           .then((response) => {
@@ -1116,13 +1192,13 @@
     <script>
       function fetchMonthlyData() {
         fetch(
-          "http://26.148.120.1:8080/api/stats/monthly?time=2025-04-06T00%3A00%3A00.015Z",
+          "http://localhost:8080/api/stats/monthly?time=2025-04-06T00%3A00%3A00.015Z",
           {
             method: "GET",
             headers: {
               accept: "*/*",
               Authorization:
-                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0NjYyNTY5NCwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ2NTM5Mjk0fQ.lngOiDbs7pH9N-bg_kcK43vbHEzrvQQLbrntOOxBFsOT8Hrhdg54QR5Mi8VauLlpI9jmFzKpC2yG_2Hiamiq7g",
+                "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc0OTczOTY0MiwiYXV0aCI6IlJPTEVfQURNSU4gUk9MRV9VU0VSIiwiaWF0IjoxNzQ3MTQ3NjQyfQ.BN2XTQYoI8ud10u3fzbymFMaaL8na33JW83ic_8Trh0Mo4lcZ5UJOH61pb_fchDBtDp72YzQeITMwSRuRQEzfg",
             },
           }
         )
