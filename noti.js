@@ -116,13 +116,35 @@ function fetchNotiData() {
     });
 }
 
+// document.addEventListener("DOMContentLoaded", () => {
+//   // Ẩn span khi trang được tải
+//   const spanElement = document.querySelector("#notification span");
+//   if (spanElement) {
+//     spanElement.style.display = "none";
+//   }
+//   fetchNotiData();
+
+//   setInterval(fetchNotiData, 1000); // Gọi fetchNotiData mỗi giây để lấy thông tin
+// });
 document.addEventListener("DOMContentLoaded", () => {
   // Ẩn span khi trang được tải
   const spanElement = document.querySelector("#notification span");
   if (spanElement) {
     spanElement.style.display = "none";
   }
+
+  // Gọi fetch lần đầu
   fetchNotiData();
 
-  // setInterval(fetchNotiData, 1000); // Gọi fetchNotiData mỗi giây để lấy thông tin
+  // // Gọi fetch định kỳ
+  // setInterval(fetchNotiData, 1000);
+
+  // Gắn sự kiện click để gọi lại fetchNotiData
+  const notiButton = document.getElementById("notification");
+  if (notiButton) {
+    notiButton.addEventListener("click", () => {
+      console.log("🔄 Notification clicked, fetching data...");
+      fetchNotiData();
+    });
+  }
 });
